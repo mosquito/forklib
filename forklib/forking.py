@@ -40,7 +40,7 @@ TASK_ID = None
 
 
 def fork(num_processes, entrypoint, pass_signals=DEFAULT_SIGNALS,
-         auto_restart=False):
+         auto_restart=False, callback=None):
 
     log = logging.getLogger(__name__)
 
@@ -85,6 +85,9 @@ def fork(num_processes, entrypoint, pass_signals=DEFAULT_SIGNALS,
 
     for i in range(num_processes):
         start(i)
+
+    if callable(callback):
+        callback()
 
     # main process
     for sig in pass_signals:
