@@ -33,6 +33,11 @@ DEFAULT_SIGNALS = frozenset({
     signal.SIGUSR2,
 })
 
+INTERRUPT_SIGNALS = frozenset({
+    signal.SIGTERM,
+    signal.SIGINT
+})
+
 
 
 TASK_ID = None
@@ -40,7 +45,7 @@ TASK_ID = None
 
 
 def fork(num_processes, entrypoint, pass_signals=DEFAULT_SIGNALS,
-         auto_restart=False, callback=None):
+         auto_restart=False, callback=None, shutdown_callback=None):
 
     log = logging.getLogger(__name__)
 
@@ -54,7 +59,9 @@ def fork(num_processes, entrypoint, pass_signals=DEFAULT_SIGNALS,
     def signal_to_children(sig, frame):
         nonlocal children, interrupt
 
-        if sig in {signal.SIGINT, signal.SIGKILL}:
+        if sig in INTERRUPT_SIGNALS:
+            if callable(shutdown_callback):
+                shutdown_callback(sig)
             interrupt = True
 
         for pid in children:
