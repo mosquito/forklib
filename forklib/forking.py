@@ -143,6 +143,7 @@ def fork(num_processes, entrypoint, pass_signals=DEFAULT_SIGNALS,
             )
 
         if auto_restart and not interrupt:
+            log.warning('Restarting child PID: %r ID: %r', pid, process_id)
             start(process_id)
 
 
