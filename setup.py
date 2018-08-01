@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='forklib',
-    version='0.2.0',
+    version='0.2.1',
     platforms="posix",
     author="Dmitry Orlov",
     author_email="me@mosquito.su",
