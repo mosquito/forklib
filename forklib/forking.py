@@ -4,6 +4,7 @@ import signal
 import logging
 import multiprocessing
 import random
+from sys import exit
 import warnings
 
 from binascii import hexlify
