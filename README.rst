@@ -95,3 +95,11 @@ this the copy-on-write mechanism will be used.
 
     if __name__ == '__main__':
         main()
+
+
+Versioning
+++++++++++
+
+This software follows `Semantic Versioning`_
+
+.. _Semantic Versioning: http://semver.org/
