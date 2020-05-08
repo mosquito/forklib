@@ -63,6 +63,49 @@ non-zero code it will be restarted immediately. e.g.::
     Proceess #0 has PID: 7584
 
 
+``async_callback`` example
+++++++++++++++++++++++++++
+
+.. code-block:: python
+
+    import asyncio
+    import forklib
+    import logging
+    import os
+    from time import sleep
+
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    def run():
+        print(
+            "Proceess #{id} has PID: {pid}".format(
+                id=forklib.get_id(),
+                pid=os.getpid()
+            )
+        )
+        sleep(1)
+
+    async def amain():
+        await asyncio.sleep(0.5)
+        print("Async callback finished")
+
+
+    def main():
+        print("Master proccess has PID: {0}".format(os.getpid()))
+
+        forklib.fork(
+            4, run,
+            async_callback=amain,
+            # Cancel all incomplete async tasks, otherwise wait (default)
+            wait_async_callback = False,
+        )
+
+
+
+    if __name__ == '__main__':
+        main()
+
 
 Parallel iteration
 ++++++++++++++++++
