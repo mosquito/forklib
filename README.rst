@@ -112,32 +112,29 @@ Parallel iteration
 
 You can load the large array of elements on the memory and process it in
 multiple processes. After forking the memory will not be copied, instead
-this the copy-on-write mechanism will be used.
+of the copy-on-write mechanism will be used.
 
 .. code-block:: python
 
-    from time import sleep
-
-    from forklib import fork_map, fork
-    import logging
+   from forklib import fork_map
+   import logging
 
 
-    logging.basicConfig(level=logging.INFO)
+   logging.basicConfig(level=logging.INFO)
 
 
-    def map_func(item):
-        return item + 1
+   def map_func(item):
+       return item + 1
 
 
-    def main():
-        for item in fork_map(map_func, range(20000), workers=10):
-            print(item)
-
-        fork(2, lambda: sleep(1), auto_restart=True)
+   def main():
+       for item in fork_map(map_func, range(20000), workers=10):
+           print(item)
 
 
-    if __name__ == '__main__':
-        main()
+   if __name__ == '__main__':
+       main()
+
 
 
 Versioning
