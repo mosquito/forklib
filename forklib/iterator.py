@@ -1,66 +1,97 @@
+import os
 import pickle
 import struct
-from contextlib import ExitStack
+import typing
+from gzip import GzipFile
 from tempfile import NamedTemporaryFile
 
-from .forking import fork, get_id
+from .forking import freeze, unfreeze
 
 
-def skip(iterable, skip, shift):
-    for idx, item in enumerate(iterable):
-        if idx % skip != shift:
-            continue
-        yield item
+HEADER = struct.Struct(">Q")
 
 
-_HEADER = struct.Struct(">Q")
-_HEADER_PLACEHOLDER = b"\x00" * _HEADER.size
+def fork_map(
+    func, arg_list: typing.Iterable,
+    workers: int = 10, tmp_dir=None, gzip=False,
+    gzip_level=4,
+) -> typing.Generator[None, typing.Any, None]:
 
-
-def _run(func, iterable, number_processes, fp):
-    fp.write(_HEADER_PLACEHOLDER)
-
-    count = 0
-    for item in skip(iterable, number_processes, get_id()):
-        pickle.dump(func(item), fp)
-        count += 1
-
-    fp.seek(0)
-    fp.write()
-
-
-def fork_map(func, iterable, workers: int = 10, tmp_dir=None):
-    with ExitStack() as stack:
-        result_files = {
-            fid: stack.enter_context(
-                NamedTemporaryFile(
-                    delete=False, dir=tmp_dir,
-                ),
-            ) for fid in range(workers)
-        }
-
-        fork(
-            workers, lambda: _run(
-                func,
-                iterable,
-                workers,
-                result_files[get_id()].file,
-            ),
+    result_files = [
+        NamedTemporaryFile(
+            mode="wb+",
+            delete=False,
+            dir=tmp_dir,
+            prefix="fork-map-",
+            suffix=".results.gz" if gzip else ".results",
         )
+        for _ in range(workers)
+    ]
 
-        for fp in result_files.values():
-            fp.delete = True
-            fp.seek(0)
+    if not isinstance(arg_list, list):
+        arg_list = list(arg_list)
 
-        sizes = {
-            fid: _HEADER.unpack(fp.read(_HEADER.size))[0]
-            for fid, fp in result_files.items()
-        }
+    children = set()
 
-        while any(sizes.values()):
-            for fid in range(workers):
-                if not sizes[fid]:
-                     continue
+    freeze()
 
-                yield pickle.load(result_files[fid])
-                sizes[fid] -= 1
+    for i in range(workers):
+        pid = os.fork()
+        if pid:
+            children.add(pid)
+            continue
+
+        if gzip:
+            result_file = GzipFile(
+                fileobj=result_files[i], mode="wb", compresslevel=gzip_level,
+            )
+        else:
+            result_file = result_files[i]
+
+        for task in arg_list[i::workers]:
+            try:
+                res = pickle.dumps((func(task), False))
+            except Exception as e:
+                res = pickle.dumps((e, True))
+
+            result_file.write(HEADER.pack(len(res)))
+            result_file.write(res)
+
+        result_file.flush()
+        return exit(0)
+
+    unfreeze()
+
+    while children:
+        pid, code = os.wait()
+        if code:
+            raise RuntimeError(
+                "Child process %d exited with code %r", pid, code,
+            )
+
+        children.remove(pid)
+
+    for i in range(workers):
+        result_files[i].seek(0)
+
+    if gzip:
+        result_read_files = [
+            GzipFile(fileobj=fp, mode="rb") for fp in result_files
+        ]
+    else:
+        result_read_files = result_files
+
+    try:
+        for i in range(len(arg_list)):
+            fp = result_read_files[i % workers]
+            hdr = fp.read(HEADER.size)
+            size = HEADER.unpack(hdr)[0]
+            res, exc = pickle.loads(fp.read(size))
+
+            if exc:
+                raise exc
+
+            yield res
+    finally:
+        for fp in result_files:
+            os.remove(fp.name)
