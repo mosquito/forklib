@@ -109,8 +109,8 @@ def fork(
     thread_callback: CallbackType = None,
     shutdown_callback: ShutdownCallbackType = None,
     async_callback: AsyncCallbackType = None,
-    wait_async_callback: bool = True,
-    wait_thread_callback: bool = True,
+    wait_async_callback: bool = False,
+    wait_thread_callback: bool = False,
 ):
 
     log = logging.getLogger(__name__)
