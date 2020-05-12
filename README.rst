@@ -97,9 +97,8 @@ non-zero code it will be restarted immediately. e.g.::
         forklib.fork(
             4, run,
             async_callback=amain,
-            # Cancel all incomplete async tasks, otherwise wait (default)
-            wait_async_callback = False,
-            async_thread_daemon = True,
+            # Wait all incomplete async tasks, otherwise cancel (default)
+            wait_async_callback = True,
         )
 
 
@@ -143,6 +142,8 @@ non-zero code it will be restarted immediately. e.g.::
         forklib.fork(
             4, run,
             thread_callback=thread_callback,
+            # Wait theread_callback, otherwise exit (default)
+            wait_thread_callback = True,
         )
 
 
