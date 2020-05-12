@@ -132,7 +132,7 @@ non-zero code it will be restarted immediately. e.g.::
         )
         sleep(1)
 
-    def main():
+    def thread_callback():
         sleep(0.5)
         print("Thread callback finished")
 
@@ -142,7 +142,7 @@ non-zero code it will be restarted immediately. e.g.::
 
         forklib.fork(
             4, run,
-            thread_callback=main,
+            thread_callback=thread_callback,
         )
 
 
