@@ -8,6 +8,7 @@ import signal
 import typing
 import warnings
 from binascii import hexlify
+from contextlib import suppress
 from enum import IntEnum
 from sys import exit
 from threading import Event, Thread
@@ -105,9 +106,11 @@ def fork(
     pass_signals: typing.AbstractSet[int] = DEFAULT_SIGNALS,
     auto_restart: bool = False,
     callback: CallbackType = None,
+    thread_callback: CallbackType = None,
     shutdown_callback: ShutdownCallbackType = None,
     async_callback: AsyncCallbackType = None,
     wait_async_callback: bool = True,
+    wait_thread_callback: bool = True,
 ):
 
     log = logging.getLogger(__name__)
@@ -121,6 +124,9 @@ def fork(
 
     def signal_to_children(sig: int, frame):
         nonlocal children, interrupt
+
+        with suppress(LookupError):
+            sig = Signal(sig)
 
         if sig in INTERRUPT_SIGNALS:
             if callable(shutdown_callback):
@@ -159,6 +165,22 @@ def fork(
     if callable(callback):
         callback()
 
+    def start_thread_callback(func, event):
+        try:
+            func()
+        finally:
+            event.set()
+
+    thread_callback_event = None
+    if thread_callback:
+        thread_callback_event = Event()
+        thread_callback_thread = Thread(
+            target=start_thread_callback,
+            args=[thread_callback, thread_callback_event],
+            daemon=True,
+        )
+        thread_callback_thread.start()
+
     def async_shutdown():
         loop = asyncio.get_event_loop()
         tasks = asyncio.Task.all_tasks(loop=loop)
@@ -185,11 +207,12 @@ def fork(
     if asyncio.iscoroutinefunction(async_callback):
         loop = asyncio.new_event_loop()
         loop_close_event = Event()
-        thread = Thread(
+        async_thread = Thread(
             target=start_async_callback,
             args=(loop, async_callback, loop_close_event),
+            daemon=True,
         )
-        thread.start()
+        async_thread.start()
 
     # main process
     for sig in pass_signals:
@@ -241,16 +264,17 @@ def fork(
             log.warning("Restarting child PID: %r ID: %r", pid, process_id)
             start(process_id)
 
-    if loop is None or loop.is_closed():
-        return
+    if loop is not None and not loop.is_closed():
+        if not wait_async_callback:
+            log.debug("Cancelling all incompleted async tasks")
+            loop.call_soon_threadsafe(async_shutdown)
 
-    if not wait_async_callback:
-        log.debug("Cancelling all imcompleted async tasks")
-        loop.call_soon_threadsafe(async_shutdown)
-    else:
         log.debug("Waiting for async_callback: %r", async_callback)
+        loop_close_event.wait()
 
-    loop_close_event.wait()
+    if thread_callback_event is not None and wait_thread_callback:
+        log.debug("Waiting for thread_callback: %r", thread_callback)
+        thread_callback_event.wait()
 
 
 def get_id():

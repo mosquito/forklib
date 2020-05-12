@@ -99,6 +99,50 @@ non-zero code it will be restarted immediately. e.g.::
             async_callback=amain,
             # Cancel all incomplete async tasks, otherwise wait (default)
             wait_async_callback = False,
+            async_thread_daemon = True,
+        )
+
+
+
+    if __name__ == '__main__':
+        main()
+
+
+``thread_callback`` example
++++++++++++++++++++++++++++
+
+.. code-block:: python
+
+    import logging
+    import os
+
+    from time import sleep
+
+    import forklib
+
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    def run():
+        print(
+            "Proceess #{id} has PID: {pid}".format(
+                id=forklib.get_id(),
+                pid=os.getpid()
+            )
+        )
+        sleep(1)
+
+    def main():
+        sleep(0.5)
+        print("Thread callback finished")
+
+
+    def main():
+        print("Master proccess has PID: {0}".format(os.getpid()))
+
+        forklib.fork(
+            4, run,
+            thread_callback=main,
         )
 
 

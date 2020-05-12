@@ -38,9 +38,11 @@ def fork_map(
     for i in range(workers):
         pid = os.fork()
         if pid:
+            # Is parent
             children.add(pid)
             continue
 
+        # Is child
         if gzip:
             result_file = GzipFile(
                 fileobj=result_files[i], mode="wb", compresslevel=gzip_level,
