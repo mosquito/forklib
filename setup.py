@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="forklib",
-    version="0.4.2",
+    version="0.5.0",
     platforms="posix",
     author="Dmitry Orlov",
     author_email="me@mosquito.su",

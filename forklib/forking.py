@@ -106,6 +106,7 @@ def fork(
     pass_signals: typing.AbstractSet[int] = DEFAULT_SIGNALS,
     auto_restart: bool = False,
     callback: CallbackType = None,
+    exit_callback: CallbackType = None,
     thread_callback: CallbackType = None,
     shutdown_callback: ShutdownCallbackType = None,
     async_callback: AsyncCallbackType = None,
@@ -263,6 +264,12 @@ def fork(
         if auto_restart and not interrupt:
             log.warning("Restarting child PID: %r ID: %r", pid, process_id)
             start(process_id)
+
+    if exit_callback is not None:
+        try:
+            exit_callback()
+        except Exception:
+            log.error("Exception when calling exit callback")
 
     if loop is not None and not loop.is_closed():
         if not wait_async_callback:
